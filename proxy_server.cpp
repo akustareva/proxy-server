@@ -1,19 +1,51 @@
 #include "proxy_server.h"
 
-proxy_server::proxy_server(epoll& ep, ipv4_endpoint const& local_endpoint): ep(ep),
-                                                                            s_socket{local_endpoint.get_port(), local_endpoint.get_address()}
+proxy_server::proxy_server(epoll& ep, ipv4_endpoint const& local_endpoint):
+        ep(ep),
+        s_socket{local_endpoint.get_port(), local_endpoint.get_address()},
+        data{ep, s_socket.get_file_descriptor(), EPOLLIN, std::bind(&proxy_server::create_new_inbound_connection, this)}
 {
     s_socket.bind_and_listen();
 }
 
-server_socket proxy_server::get_server_socket() {
+server_socket& proxy_server::get_server_socket() {
     return s_socket;
 }
 
-epoll proxy_server::get_epoll() {
+epoll& proxy_server::get_epoll() {
     return ep;
 }
 
 void proxy_server::run() {
     ep.run();
 }
+
+void proxy_server::create_new_inbound_connection() {
+
+}
+
+void proxy_server::create_new_outbound_connection(inbound_connection *inbound) {
+
+}
+
+inbound_connection::inbound_connection(proxy_server* proxy, std::function<void(inbound_connection*)> on_disconnect):
+        proxy(proxy),
+        c_socket{proxy->get_server_socket().accept()},
+        outbound(nullptr),
+        data(proxy->get_epoll(), c_socket.get_file_descriptor(), EPOLLIN, [this] (uint32_t events) {
+            try {
+                if (events & EPOLLIN) {
+                    // read request
+                }
+                if (events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP)) {
+                    on_disconnect(this);
+                    return;
+                }
+                if (events & EPOLLOUT) {
+                    // write response
+                }
+            } catch(std::runtime_error &e) {
+                on_disconnect(this);
+            }
+        })
+{}

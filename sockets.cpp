@@ -55,3 +55,7 @@ void client_socket::connect(ipv4_endpoint &remote) {
         throw_error("Error during connect() client socket " + fd.get_file_descriptor());
     }
 }
+
+raii_file_descriptor &client_socket::get_file_descriptor() {
+    return fd;
+}

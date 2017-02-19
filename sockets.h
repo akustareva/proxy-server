@@ -33,6 +33,8 @@ public:
     client_socket(int fd);
 
     void connect(ipv4_endpoint &remote);
+
+    raii_file_descriptor& get_file_descriptor();
 };
 
 #endif //PROXY_SERVER_SOCKETS_H

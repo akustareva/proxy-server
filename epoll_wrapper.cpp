@@ -74,10 +74,11 @@ void epoll::modify(raii_file_descriptor& fd_, uint32_t flags, data_info *data) {
     ctl_common(fd_, EPOLL_CTL_MOD, flags, data);
 }
 
-data_info::data_info(epoll& ep, raii_file_descriptor& fd, uint32_t flags, action_t action): ep(ep),
-                                                                                            fd(fd),
-                                                                                            flags(flags | EPOLLERR | EPOLLRDHUP | EPOLLHUP),
-                                                                                            callback(action)
+data_info::data_info(epoll& ep, raii_file_descriptor& fd, uint32_t flags, action_t action):
+        ep(ep),
+        fd(fd),
+        flags(flags | EPOLLERR | EPOLLRDHUP | EPOLLHUP),
+        callback(action)
 
 {
     ep.add(fd, flags, this);
