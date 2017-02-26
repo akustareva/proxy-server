@@ -14,6 +14,7 @@ public:
 
     int get_file_descriptor();
     ssize_t read(void *buffer, size_t size);
+    ssize_t write(void const *buffer, size_t size);
 
     friend std::ostream& operator<<(std::ostream& os, const raii_file_descriptor& fd);
 };

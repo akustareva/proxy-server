@@ -35,20 +35,21 @@ inbound_connection::inbound_connection(proxy_server* proxy, std::function<void(i
         proxy(proxy),
         c_socket{proxy->get_server_socket().accept()},
         outbound(nullptr),
+        on_disconnect(on_disconnect),
         data(proxy->get_epoll(), c_socket.get_file_descriptor(), EPOLLIN, [this] (uint32_t events) {
             try {
                 if (events & EPOLLIN) {
                     // read request
                 }
                 if (events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP)) {
-                    on_disconnect(this);
+                    this->on_disconnect(this);
                     return;
                 }
                 if (events & EPOLLOUT) {
                     // write response
                 }
             } catch(std::runtime_error &e) {
-                on_disconnect(this);
+                this->on_disconnect(this);
             }
         })
 {}

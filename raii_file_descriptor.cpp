@@ -29,3 +29,13 @@ ssize_t raii_file_descriptor::read(void *buffer, size_t size) {
     }
     return res;
 }
+
+ssize_t raii_file_descriptor::write(void const *buffer, size_t size) {
+    ssize_t res = ::write(fd, buffer, size);
+    if (res == -1) {
+        if (errno != EWOULDBLOCK && errno != EAGAIN) {
+            throw_error("Error during writing into socket " + fd);
+        }
+    }
+    return res;
+}

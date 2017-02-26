@@ -35,6 +35,7 @@ private:
     proxy_server* proxy;
     client_socket c_socket;
     outbound_connection* outbound;
+    std::function<void(inbound_connection*)> on_disconnect;
     data_info data;
 public:
     inbound_connection(proxy_server *proxy, std::function<void(inbound_connection*)> on_disconnect);
