@@ -9,5 +9,6 @@ set(SOURCE_FILES main.cpp
         ipv4_endpoint.cpp ipv4_endpoint.h
         sockets.cpp sockets.h
         epoll_wrapper.cpp epoll_wrapper.h
-        proxy_server.cpp proxy_server.h)
+        proxy_server.cpp proxy_server.h
+        event_handler.cpp event_handler.h DNS_resolver.cpp DNS_resolver.h)
 add_executable(proxy_server ${SOURCE_FILES})

@@ -21,7 +21,10 @@ void proxy_server::run() {
 }
 
 void proxy_server::create_new_inbound_connection() {
-
+    std::unique_ptr<inbound_connection> u_ptr(new inbound_connection(this,
+                        [this](inbound_connection* connection) {inbound_connections.erase(connection);}));
+    inbound_connection* ptr = u_ptr.get();
+    inbound_connections.emplace(ptr, std::move(u_ptr));
 }
 
 void proxy_server::create_new_outbound_connection(inbound_connection *inbound) {
