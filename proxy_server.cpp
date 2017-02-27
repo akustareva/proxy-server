@@ -3,7 +3,22 @@
 proxy_server::proxy_server(epoll& ep, ipv4_endpoint const& local_endpoint):
         ep(ep),
         s_socket{local_endpoint.get_port(), local_endpoint.get_address()},
-        data{ep, s_socket.get_file_descriptor(), EPOLLIN, std::bind(&proxy_server::create_new_inbound_connection, this)}
+        data{ep, s_socket.get_file_descriptor(), EPOLLIN, std::bind(&proxy_server::create_new_inbound_connection, this)},
+        resolver(&handler, 10),
+        handler(ep, [this] () {
+            auto response = resolver.get_response();
+            auto found_connection = waiting_for_connection.find(response.id);
+            if (found_connection != waiting_for_connection.end()) {
+                if (inbound_connections.find(found_connection->second) != inbound_connections.end()) {
+                    if (response.failed) {
+                        // TODO: bad request
+                    } else {
+                        response.callback(response.resolved, response.resolved_len);
+                    }
+                }
+                waiting_for_connection.erase(response.id);
+            }
+        })
 {
     s_socket.bind_and_listen();
 }
@@ -39,14 +54,14 @@ inbound_connection::inbound_connection(proxy_server* proxy, std::function<void(i
         data(proxy->get_epoll(), c_socket.get_file_descriptor(), EPOLLIN, [this] (uint32_t events) {
             try {
                 if (events & EPOLLIN) {
-                    // read request
+                    // TODO: read request
                 }
                 if (events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP)) {
                     this->on_disconnect(this);
                     return;
                 }
                 if (events & EPOLLOUT) {
-                    // write response
+                    // TODO: write response
                 }
             } catch(std::runtime_error &e) {
                 this->on_disconnect(this);

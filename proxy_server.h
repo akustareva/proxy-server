@@ -1,9 +1,10 @@
 #ifndef PROXY_SERVER_PROXY_SERVER_H
 #define PROXY_SERVER_PROXY_SERVER_H
 
-
 #include "epoll_wrapper.h"
 #include "sockets.h"
+#include "event_handler.h"
+#include "DNS_resolver.h"
 
 #include <map>
 #include <bits/unique_ptr.h>
@@ -16,8 +17,11 @@ private:
     epoll& ep;
     server_socket s_socket;
     data_info data;
+    event_handler handler;
+    DNS_resolver resolver;
     std::map<inbound_connection*, std::unique_ptr <inbound_connection> > inbound_connections;
     std::map<outbound_connection*, std::unique_ptr <outbound_connection> > outbound_connections;
+    std::map<uint64_t, inbound_connection*> waiting_for_connection;
 public:
     proxy_server(epoll& ep, ipv4_endpoint const& local_endpoint);
 
@@ -45,6 +49,5 @@ class outbound_connection {
     friend class proxy_server;
     friend class inbound_connection;
 };
-
 
 #endif //PROXY_SERVER_PROXY_SERVER_H

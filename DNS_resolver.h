@@ -1,15 +1,15 @@
 #ifndef PROXY_SERVER_DNS_RESOLVER_H
 #define PROXY_SERVER_DNS_RESOLVER_H
 
+#include "event_handler.h"
+#include "sockets.h"
+
 #include <vector>
 #include <thread>
 #include <string.h>
 #include <condition_variable>
 #include <mutex>
 #include <queue>
-
-#include "event_handler.h"
-#include "sockets.h"
 
 typedef typename std::function<void(sockaddr, socklen_t)> callback_t;
 
@@ -45,6 +45,8 @@ private:
 public:
     DNS_resolver(event_handler* handler, size_t thread_count);
     ~DNS_resolver();
+
+    response get_response();
 };
 
 #endif //PROXY_SERVER_DNS_RESOLVER_H

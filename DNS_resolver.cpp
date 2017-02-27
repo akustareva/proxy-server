@@ -51,6 +51,7 @@ DNS_resolver::DNS_resolver(event_handler* handler, size_t thread_count): finishe
 
 DNS_resolver::~DNS_resolver() {
     finished = true;
+    condition.notify_all();
     for (auto& thread : resolvers) {
         thread.join();
     }
@@ -68,3 +69,12 @@ DNS_resolver::response::response(uint64_t id, sockaddr resolved, socklen_t resol
                                                        failed(failed),
                                                        callback(std::move(callback))
 {}
+
+DNS_resolver::response DNS_resolver::get_response() {
+    std::unique_lock<std::mutex> results_locker(response_mutex);
+    auto response = result_queue.front();
+    result_queue.pop();
+    results_locker.unlock();
+
+    return *response;
+}
