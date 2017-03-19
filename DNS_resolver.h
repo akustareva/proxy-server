@@ -31,9 +31,21 @@ private:
         bool failed;
         callback_t callback;
     };
+    class id_queue {
+    private:
+        uint64_t counter;
+        std::queue<uint64_t> queue;
+        std::mutex mutex;
+    public:
+        id_queue();
+
+        uint64_t get_next_id();
+        void add_id(uint64_t id);
+    };
     bool finished;
     event_handler* handler;
     std::vector<std::thread> resolvers;
+    id_queue ids;
 
     std::mutex request_mutex;
     std::mutex response_mutex;
@@ -46,7 +58,9 @@ public:
     DNS_resolver(event_handler* handler, size_t thread_count);
     ~DNS_resolver();
 
+    uint64_t resolve(std::string const& host, callback_t callback);
     response get_response();
+    void add_id(uint64_t id);
 };
 
 #endif //PROXY_SERVER_DNS_RESOLVER_H

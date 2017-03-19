@@ -78,3 +78,39 @@ DNS_resolver::response DNS_resolver::get_response() {
 
     return *response;
 }
+
+uint64_t DNS_resolver::resolve(std::string const& host, callback_t callback) {
+    uint64_t id = ids.get_next_id();
+    std::unique_lock<std::mutex> locker(request_mutex);
+    resolve_queue.push(new request(id, host, std::move(callback)));
+    condition.notify_one();
+    locker.unlock();
+    return id;
+}
+
+void DNS_resolver::add_id(uint64_t id) {
+    ids.add_id(id);
+}
+
+DNS_resolver::id_queue::id_queue(): counter(0)
+{
+    queue.push(counter);
+}
+
+uint64_t DNS_resolver::id_queue::get_next_id() {
+    uint64_t id;
+    std::unique_lock<std::mutex> locker(mutex);
+    if (queue.empty()) {
+        queue.push(++counter);
+    }
+    id = queue.front();
+    queue.pop();
+    locker.unlock();
+    return id;
+}
+
+void DNS_resolver::id_queue::add_id(uint64_t id) {
+    std::unique_lock<std::mutex> locker(mutex);
+    queue.push(id);
+    locker.unlock();
+}

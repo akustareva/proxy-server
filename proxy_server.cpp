@@ -17,6 +17,7 @@ proxy_server::proxy_server(epoll& ep, ipv4_endpoint const& local_endpoint):
                     }
                 }
                 waiting_for_connection.erase(response.id);
+                resolver.add_id(response.id);
             }
         })
 {
@@ -43,7 +44,7 @@ void proxy_server::create_new_inbound_connection() {
 }
 
 void proxy_server::create_new_outbound_connection(inbound_connection *inbound) {
-
+    waiting_for_connection.emplace(); // TODO: fill it
 }
 
 inbound_connection::inbound_connection(proxy_server* proxy, std::function<void(inbound_connection*)> on_disconnect):
