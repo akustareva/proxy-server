@@ -40,7 +40,6 @@ void http_wrapper::parse_headers() {
 
 void http_wrapper::check_body() {
     body = message.substr(body_start);
-
     if (get_header_value("Content-Length") != "") {
         if (body.size() == static_cast<size_t>(std::stoi(get_header_value("Content-Length")))) {
             state = FULL_BODY;
@@ -70,4 +69,63 @@ std::string http_wrapper::get_header_value(std::string header) {
 
 std::string http_wrapper::get_message() {
     return message;
+}
+
+http_request::http_request(std::string message) : http_wrapper(message) {
+    update_state();
+}
+
+void http_request::parse_first_line() {
+    auto first_space = std::find_if(message.begin(), message.end(), [](char a) { return a == ' '; });
+    auto second_space = std::find_if(first_space + 1, message.end(), [](char a) { return a == ' '; });
+    auto crlf = std::find_if(second_space + 1, message.end(), [](char a) { return a == '\r'; });
+    method = {message.begin(), first_space};
+    URI = {first_space + 1, second_space};
+    http_version = {second_space + 1, crlf};
+    if (method != "POST" && method != "GET" || URI == "" ||
+            http_version != "HTTP/1.1" && http_version != "HTTP/1.0") {
+        state = BAD;
+        return;
+    }
+}
+
+std::string http_request::get_URI() {
+    if (URI.find("http://") == 0) {
+        URI = URI.substr(URI.find("http://") + 7);
+    }
+    return URI;
+}
+
+std::string http_request::get_host() {
+    if (host == "") {
+        host = get_header_value("Host");
+        if (host != "") {
+            return host;
+        }
+    }
+    return get_header_value("host");
+}
+
+std::string http_request::get_request_message() {
+    std::string new_message = method + " " + get_URI() + " " + http_version + "\r\n";
+    for (auto it : this->headers) {
+        if (it.first != "Proxy-Connection") {
+            new_message += it.first + ": " + it.second + "\r\n";
+        }
+    }
+    new_message += "\r\n" + body;
+    return new_message;
+}
+
+http_response::http_response(std::string message) : http_wrapper(message) {
+    update_state();
+}
+
+void http_response::parse_first_line() {
+    auto first_space = std::find_if(message.begin(), message.end(), [](char a) { return a == ' '; });
+    auto second_space = std::find_if(first_space + 1, message.end(), [](char a) { return a == ' '; });
+    auto crlf = std::find_if(second_space + 1, message.end(), [](char a) { return a == '\r'; });
+    if (first_space == message.end() || second_space == message.end() || crlf == message.end()) {
+        state = BAD;
+    }
 }
