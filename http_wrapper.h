@@ -14,8 +14,6 @@ enum state_t {
 class http_wrapper {
 private:
     size_t body_start = 0;
-
-    std::string get_header_value(std::string header);
 protected:
     std::string message;
     std::string body;
@@ -26,6 +24,7 @@ protected:
     virtual void parse_first_line() = 0;
     void parse_headers();
     void check_body();
+    std::string get_header_value(std::string header);
 public:
     http_wrapper(std::string input) : message(input) {};
     ~http_wrapper() {};

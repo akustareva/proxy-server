@@ -61,20 +61,56 @@ inbound_connection::inbound_connection(proxy_server* proxy, std::function<void(i
         data(proxy->get_epoll(), c_socket.get_file_descriptor(), EPOLLIN, [this] (uint32_t events) {
             try {
                 if (events & EPOLLIN) {
-                    // TODO: read request
+                    read_request();
                 }
                 if (events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP)) {
                     this->on_disconnect(this);
                     return;
                 }
                 if (events & EPOLLOUT) {
-                    // TODO: write response
+                    send_response();
                 }
             } catch(std::runtime_error &e) {
                 this->on_disconnect(this);
             }
         })
 {}
+
+inbound_connection::~inbound_connection() {}
+
+void inbound_connection::read_request() {
+    std::string buffer = "";
+    c_socket.read_into_buffer(buffer);
+    if (request.get() == nullptr) {
+        request.reset(new http_request(buffer));
+    } else {
+        request->add_part(buffer);
+    }
+    if (request->get_state() == BAD) {
+        response_messages.push("HTTP/1.1 400 Bad Request\r\n\r\n");
+        data.add_flag(EPOLLOUT);
+    } else if (request->get_state() == FULL_BODY) {
+        proxy->create_new_outbound_connection(this);
+    }
+}
+
+void inbound_connection::send_response() {
+    while (!response_messages.empty()) {
+        std::string message = response_messages.front();
+        ssize_t sent = c_socket.write(message.c_str(), message.size());
+        if (sent != message.size()) {
+            response_messages.front() = message.substr(sent);
+            break;
+        }
+        response_messages.pop();
+    }
+    if (response_messages.empty()) {
+        if (outbound != nullptr) {
+            outbound->data.add_flag(EPOLLIN);
+        }
+        data.remove_flag(EPOLLOUT);
+    }
+}
 
 outbound_connection::outbound_connection(proxy_server *proxy, inbound_connection *inbound, sockaddr addr, socklen_t slen,
                                          std::function<void(outbound_connection *)> on_disconnect) :
@@ -86,14 +122,14 @@ outbound_connection::outbound_connection(proxy_server *proxy, inbound_connection
         data(proxy->get_epoll(), s_socket.get_file_descriptor(), EPOLLOUT, [this] (uint32_t events) {
             try {
                 if (events & EPOLLIN) {
-                    // TODO: read response
+                    read_response();
                 }
                 if (events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP)) {
                     this->on_disconnect(this);
                     return;
                 }
                 if (events & EPOLLOUT) {
-                    // TODO: write request
+                    send_request();
                 }
             } catch(std::runtime_error &e) {
                 this->on_disconnect(this);
@@ -102,4 +138,36 @@ outbound_connection::outbound_connection(proxy_server *proxy, inbound_connection
 {
     s_socket.connect(&addr, slen);
     inbound->outbound = this;
+}
+
+outbound_connection::~outbound_connection() {
+    if (inbound != nullptr && inbound->outbound == this) {
+        inbound->outbound = nullptr;
+    }
+}
+
+void outbound_connection::read_response() {
+    if (inbound != nullptr) {
+        std::string buffer;
+        s_socket.read_into_buffer(buffer);
+        if (response.get() == nullptr) {
+            response.reset(new http_response(buffer));
+        } else {
+            response->add_part(buffer);
+        }
+        inbound->response_messages.push(buffer);
+        inbound->data.add_flag(EPOLLOUT);
+        data.remove_flag(EPOLLIN);
+    } else {
+        throw_error("Error in read_response(): no inbound connection associated with it.");
+    }
+}
+
+void outbound_connection::send_request() {
+    if (inbound != nullptr) {
+        std::string buffer;
+        // TODO: send request
+    } else {
+        throw_error("Error in send_request(): no inbound connection associated with it.");
+    }
 }

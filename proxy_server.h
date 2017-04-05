@@ -43,8 +43,13 @@ private:
     std::unique_ptr<http_request> request;
     std::function<void(inbound_connection*)> on_disconnect;
     data_info data;
+    std::queue<std::string> response_messages;
 public:
     inbound_connection(proxy_server *proxy, std::function<void(inbound_connection*)> on_disconnect);
+    ~inbound_connection();
+
+    void read_request();
+    void send_response();
 };
 
 class outbound_connection {
@@ -60,6 +65,10 @@ private:
     std::function<void(outbound_connection*)> on_disconnect;
 public:
     outbound_connection(proxy_server *proxy, inbound_connection* inbound, sockaddr addr, socklen_t slen, std::function<void(outbound_connection*)> on_disconnect);
+    ~outbound_connection();
+
+    void read_response();
+    void send_request();
 };
 
 #endif //PROXY_SERVER_PROXY_SERVER_H
