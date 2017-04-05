@@ -1,5 +1,4 @@
 #include "raii_file_descriptor.h"
-#include "throw_error.h"
 
 raii_file_descriptor::raii_file_descriptor(): fd(-1) {}
 
@@ -38,4 +37,12 @@ ssize_t raii_file_descriptor::write(void const *buffer, size_t size) {
         }
     }
     return res;
+}
+
+int raii_file_descriptor::get_available() {
+    int available;
+    if (ioctl(fd, FIONREAD, &available) == -1) {
+        throw_error("Error during getting available bytes");
+    }
+    return available;
 }

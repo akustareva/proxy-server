@@ -5,6 +5,7 @@
 #include "sockets.h"
 #include "event_handler.h"
 #include "DNS_resolver.h"
+#include "http_wrapper.h"
 
 #include <map>
 #include <bits/unique_ptr.h>
@@ -39,6 +40,7 @@ private:
     proxy_server* proxy;
     client_socket c_socket;
     outbound_connection* outbound;
+    std::unique_ptr<http_request> request;
     std::function<void(inbound_connection*)> on_disconnect;
     data_info data;
 public:
@@ -48,6 +50,16 @@ public:
 class outbound_connection {
     friend class proxy_server;
     friend class inbound_connection;
+private:
+    proxy_server* proxy;
+    server_socket s_socket;
+    data_info data;
+    inbound_connection* inbound;
+    std::unique_ptr<http_request> request;
+    std::unique_ptr<http_response> response;
+    std::function<void(outbound_connection*)> on_disconnect;
+public:
+    outbound_connection(proxy_server *proxy, inbound_connection* inbound, sockaddr addr, socklen_t slen, std::function<void(outbound_connection*)> on_disconnect);
 };
 
 #endif //PROXY_SERVER_PROXY_SERVER_H

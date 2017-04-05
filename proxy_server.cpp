@@ -44,7 +44,13 @@ void proxy_server::create_new_inbound_connection() {
 }
 
 void proxy_server::create_new_outbound_connection(inbound_connection *inbound) {
-    waiting_for_connection.emplace(); // TODO: fill it
+    waiting_for_connection.emplace(resolver.resolve(inbound->request->get_host(), [this, inbound] (sockaddr addr, socklen_t slen) {
+        std::unique_ptr<outbound_connection> out_uptr(new outbound_connection(this, inbound, addr, slen, [this] (outbound_connection* outbound) {
+            outbound_connections.erase(outbound);
+        }));
+        outbound_connection* out_ptr = out_uptr.get();
+        this->outbound_connections.emplace(out_ptr, std::move(out_uptr));
+    }), inbound);
 }
 
 inbound_connection::inbound_connection(proxy_server* proxy, std::function<void(inbound_connection*)> on_disconnect):
@@ -69,3 +75,31 @@ inbound_connection::inbound_connection(proxy_server* proxy, std::function<void(i
             }
         })
 {}
+
+outbound_connection::outbound_connection(proxy_server *proxy, inbound_connection *inbound, sockaddr addr, socklen_t slen,
+                                         std::function<void(outbound_connection *)> on_disconnect) :
+        s_socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK),
+        proxy(proxy),
+        on_disconnect(on_disconnect),
+        inbound(inbound),
+        request(std::move(inbound->request)),
+        data(proxy->get_epoll(), s_socket.get_file_descriptor(), EPOLLOUT, [this] (uint32_t events) {
+            try {
+                if (events & EPOLLIN) {
+                    // TODO: read response
+                }
+                if (events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP)) {
+                    this->on_disconnect(this);
+                    return;
+                }
+                if (events & EPOLLOUT) {
+                    // TODO: write request
+                }
+            } catch(std::runtime_error &e) {
+                this->on_disconnect(this);
+            }
+        })
+{
+    s_socket.connect(&addr, slen);
+    inbound->outbound = this;
+}

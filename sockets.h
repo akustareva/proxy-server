@@ -21,6 +21,7 @@ public:
 
     void bind_and_listen();
     client_socket accept();
+    void connect(sockaddr* addr, socklen_t slen);
 
     raii_file_descriptor& get_file_descriptor();
 };

@@ -28,6 +28,14 @@ void server_socket::bind_and_listen() {
     }
 }
 
+void server_socket::connect(sockaddr* addr, socklen_t slen) {
+    if ((::connect(fd.get_file_descriptor(), addr, slen)) == -1) {
+        if (errno != EINPROGRESS) {
+            throw_error("Error during connect() connect server socket");
+        }
+    }
+}
+
 raii_file_descriptor &server_socket::get_file_descriptor() {
     return fd;
 }
