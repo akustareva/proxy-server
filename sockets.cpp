@@ -79,7 +79,9 @@ client_socket server_socket::accept() {
 
 client_socket::client_socket() {}
 
-client_socket::client_socket(int fd): fd(fd) {}
+client_socket::client_socket(int fd) {
+    this->fd = fd;
+}
 
 void client_socket::connect(ipv4_endpoint &remote) {
     sockaddr_in saddr{};

@@ -166,7 +166,18 @@ void outbound_connection::read_response() {
 void outbound_connection::send_request() {
     if (inbound != nullptr) {
         std::string buffer;
-        // TODO: send request
+        if (request_message_rest.empty()) {
+            buffer = request->get_request_message();
+        } else {
+            buffer = request_message_rest;
+        }
+        ssize_t sent = s_socket.write(buffer.c_str(), buffer.size());
+        if (sent != buffer.size()) {
+            request_message_rest = buffer.substr(sent);
+        } else {
+            data.add_flag(EPOLLIN);
+            data.remove_flag(EPOLLOUT);
+        }
     } else {
         throw_error("Error in send_request(): no inbound connection associated with it.");
     }

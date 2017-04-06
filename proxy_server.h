@@ -63,6 +63,7 @@ private:
     std::unique_ptr<http_request> request;
     std::unique_ptr<http_response> response;
     std::function<void(outbound_connection*)> on_disconnect;
+    std::string request_message_rest;
 public:
     outbound_connection(proxy_server *proxy, inbound_connection* inbound, sockaddr addr, socklen_t slen, std::function<void(outbound_connection*)> on_disconnect);
     ~outbound_connection();
