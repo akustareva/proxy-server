@@ -1,15 +1,16 @@
 #ifndef PROXY_SERVER_DNS_RESOLVER_H
 #define PROXY_SERVER_DNS_RESOLVER_H
 
-#include "event_handler.h"
-#include "sockets.h"
 
 #include <vector>
 #include <thread>
 #include <string.h>
-#include <condition_variable>
 #include <mutex>
 #include <queue>
+#include <condition_variable>
+#include <netdb.h>
+
+#include "event_handler.h"
 
 typedef typename std::function<void(sockaddr, socklen_t)> callback_t;
 
@@ -43,24 +44,26 @@ private:
         void add_id(uint64_t id);
     };
     bool finished;
-    event_handler* handler;
+    event_handler *handler;
     std::vector<std::thread> resolvers;
     id_queue ids;
 
     std::mutex request_mutex;
-    std::mutex response_mutex;
+    std::mutex results_mutex;
     std::condition_variable condition;
     std::queue<request*> resolve_queue;
     std::queue<response*> result_queue;
 
     void resolver();
 public:
-    DNS_resolver(event_handler* handler, size_t thread_count);
+    DNS_resolver(event_handler *handler, size_t threads_count);
     ~DNS_resolver();
 
     uint64_t resolve(std::string const& host, callback_t callback);
     response get_response();
     void add_id(uint64_t id);
 };
+
+
 
 #endif //PROXY_SERVER_DNS_RESOLVER_H

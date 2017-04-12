@@ -1,14 +1,15 @@
-#ifndef PROXY_SERVER_HTTP_WRAPPER_H
-#define PROXY_SERVER_HTTP_WRAPPER_H
+#ifndef PROXY_HTTP_WRAPPER_H
+#define PROXY_HTTP_WRAPPER_H
 
-#include <string>
+
 #include <unordered_map>
-#include <algorithm>
-
-#include "throw_error.h"
+#include <string>
+#include <sstream>
+#include <regex>
+#include <iostream>
 
 enum state_t {
-       BAD, START, FIRST_LINE, HEADERS, PARTIAL_BODY, FULL_BODY
+    BAD, START, FIRST_LINE, HEADERS, PARTIAL_BODY, FULL_BODY
 };
 
 class http_wrapper {
@@ -21,20 +22,21 @@ protected:
     state_t state = START;
 
     void update_state();
-    virtual void parse_first_line() = 0;
-    void parse_headers();
     void check_body();
-    std::string get_header_value(std::string header);
+    void parse_headers();
+    std::string get_header_value(std::string) const;
+    virtual void parse_first_line() = 0;
 public:
+    static const std::string BAD_REQUEST;
+
     http_wrapper(std::string input) : message(input) {};
-    ~http_wrapper() {};
+    virtual ~http_wrapper() {};
 
     int get_state();
-    void add_part(std::string new_part);
-    std::string get_message();
+    void add_part(std::string);
 };
 
-class http_request : public http_wrapper {
+class http_request: public http_wrapper {
 private:
     std::string method;
     std::string URI;
@@ -43,7 +45,7 @@ private:
 
     void parse_first_line() override;
 public:
-    http_request(std::string message);
+    http_request(std::string text);
 
     std::string get_URI();
     std::string get_host();
@@ -52,9 +54,14 @@ public:
 
 class http_response: public http_wrapper {
 private:
+    std::string code;
+    std::string http_version;
+
     void parse_first_line() override;
 public:
-    http_response(std::string message);
+    http_response(std::string text);
+    http_response(const http_response&);
 };
 
-#endif //PROXY_SERVER_HTTP_WRAPPER_H
+
+#endif //PROXY_HTTP_WRAPPER_H

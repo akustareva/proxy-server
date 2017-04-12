@@ -1,14 +1,69 @@
 #include "epoll_wrapper.h"
 
-epoll::epoll() {
-    int epoll_fd = epoll_create(MAX_EVENTS);
+epoll::epoll() : is_close(false) {
+    epoll_fd = epoll_create(1);
     if (epoll_fd == -1) {
-        throw_error("Error in epoll()");
+        throw_error("Error in epoll_create");
     }
-    fd = raii_file_descriptor(epoll_fd);
 }
 
-raii_file_descriptor epoll::create_signals(std::vector<uint8_t> signals) {
+epoll::~epoll() {
+    close(epoll_fd);
+}
+
+void epoll::run() {
+    raii_file_descriptor signal_fd = create_signal_fd({SIGINT, SIGTERM});
+    data_info signal_event_creation(*this, signal_fd, EPOLLIN, [this](uint32_t) {
+        std::cerr << "Signal caught: Success\n";
+        this->is_close = true;
+    });
+    epoll_event events[MAX_EVENTS_COUNT];
+    while (!is_close) {
+        int count;
+        count = epoll_wait(epoll_fd, events, MAX_EVENTS_COUNT, -1);
+        if (count < 0) {
+            if (errno != EINTR) {
+                throw_error("Error in epoll_wait");
+            } else {
+                break;
+            }
+        }
+        for (int i = 0; i < count; i++) {
+            auto &ev = events[i];
+            try {
+                data_info *x = static_cast<data_info *>(ev.data.ptr);
+                if (open_data.find(x) != open_data.end()) {
+                    x->callback(ev.events);
+                }
+            } catch (std::exception &ignored) {}
+        }
+    }
+}
+
+void epoll::ctl_common(int operation, int fd, data_info *event, uint32_t flags) {
+    struct epoll_event e_event;
+    e_event.data.ptr = event;
+    e_event.events = flags;
+    if (epoll_ctl(epoll_fd, operation, fd, &e_event) == -1) {
+        throw_error("Error in ctl_common(): " + operation);
+    }
+}
+
+void epoll::add(raii_file_descriptor &fd, data_info *event, uint32_t flags) {
+    open_data.insert(event);
+    ctl_common(EPOLL_CTL_ADD, fd.get_file_descriptor(), event, flags);
+}
+
+void epoll::remove(raii_file_descriptor & fd, data_info *event, uint32_t flags) {
+    open_data.erase(event);
+    ctl_common(EPOLL_CTL_DEL, fd.get_file_descriptor(), event, 0);
+}
+
+void epoll::modify(raii_file_descriptor & fd, data_info *event, uint32_t flags) {
+    ctl_common(EPOLL_CTL_MOD, fd.get_file_descriptor(), event, flags);
+}
+
+raii_file_descriptor epoll::create_signal_fd(std::vector<uint8_t> signals) {
     sigset_t mask;
     sigemptyset(&mask);
     for (int i = 0; i < signals.size(); i++) {
@@ -24,76 +79,41 @@ raii_file_descriptor epoll::create_signals(std::vector<uint8_t> signals) {
     return raii_file_descriptor(signal_fd);
 }
 
-void epoll::run() {
-    raii_file_descriptor signal_fd = create_signals({SIGINT, SIGTERM});
-    data_info ignored(*this, signal_fd, EPOLLIN, [this](uint32_t signal) {     // add signal event
-        std::cerr << "Signal " << signal << " was cought" << std::endl;
-        this->is_close = true;
-    });
-    epoll_event events[MAX_EVENTS];
-    while (!is_close) {
-        int count = epoll_wait(fd.get_file_descriptor(), events, MAX_EVENTS, -1);
-        if (count < 0) {
-            if (errno == EINTR) {
-                continue;
-            } else {
-                throw_error("Error in run() during epoll_wait()");
-            }
-        }
-        for (int i = 0; i < count; i++) {
-            auto& event = events[i];
-            data_info* data = static_cast<data_info*>(event.data.ptr);
-            if (open_data.find(data) != open_data.end()) {
-                data->callback(event.events);
-            }
-        }
-    }
-}
-
-void epoll::ctl_common(raii_file_descriptor &fd_, int operation, uint32_t flags, data_info *data) {
-    epoll_event event;
-    event.events = flags;
-    event.data.ptr = data;
-    int res = epoll_ctl(fd.get_file_descriptor(), operation, fd_.get_file_descriptor(), &event);
-    if (res < 0) {
-        throw_error("Error in ctl_common(): " + operation);
-    }
-}
-
-void epoll::add(raii_file_descriptor& fd_, uint32_t flags, data_info* data) {
-    open_data.insert(data);
-    ctl_common(fd_, EPOLL_CTL_ADD, flags, data);
-}
-
-void epoll::remove(raii_file_descriptor& fd_, data_info* data) {
-    open_data.erase(data);
-    ctl_common(fd_, EPOLL_CTL_DEL, 0, data);
-}
-
-void epoll::modify(raii_file_descriptor& fd_, uint32_t flags, data_info *data) {
-    ctl_common(fd_, EPOLL_CTL_MOD, flags, data);
-}
-
-data_info::data_info(epoll& ep, raii_file_descriptor& fd, uint32_t flags, action_t action):
-        ep(ep),
-        fd(fd),
-        flags(flags | EPOLLERR | EPOLLRDHUP | EPOLLHUP),
-        callback(action)
-
+data_info::data_info(epoll &ep, raii_file_descriptor &fd, uint32_t flags, action_t callback)
+        : ep(ep),
+          fd(fd),
+          callback(callback),
+          flags(flags | EPOLLERR | EPOLLRDHUP | EPOLLHUP)
 {
-    ep.add(fd, flags, this);
-}
-
-data_info::~data_info() {
-    ep.remove(fd, this);
+    ep.add(fd, this, flags);
 }
 
 void data_info::add_flag(uint32_t flag) {
     flags |= flag;
-    ep.modify(fd, flags, this);
+    ep.modify(fd, this, flags);
 }
 
 void data_info::remove_flag(uint32_t flag) {
     flags &= ~flag;
-    ep.modify(fd, flags, this);
+    ep.modify(fd, this, flags);
 }
+
+data_info::~data_info() {
+    ep.remove(fd, this, 0);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
