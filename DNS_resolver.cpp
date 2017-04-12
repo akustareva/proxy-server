@@ -90,7 +90,6 @@ DNS_resolver::response DNS_resolver::get_response() {
     auto response = result_queue.front();
     result_queue.pop();
     results_locker.unlock();
-
     return *response;
 }
 
@@ -98,8 +97,7 @@ void DNS_resolver::add_id(uint64_t id) {
     ids.add_id(id);
 }
 
-DNS_resolver::id_queue::id_queue(): counter(0)
-{
+DNS_resolver::id_queue::id_queue(): counter(0) {
     queue.push(counter);
 }
 

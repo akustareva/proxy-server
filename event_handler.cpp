@@ -12,12 +12,11 @@ event_handler::event_handler(epoll &ep, std::function<void()> callback)
 {}
 
 int event_handler::create_eventfd() {
-    int res = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC | EFD_SEMAPHORE);
-    if (res == -1) {
+    int fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC | EFD_SEMAPHORE);
+    if (fd == -1) {
         throw_error("Error during creation eventfd");
     }
-
-    return res;
+    return fd;
 }
 
 raii_file_descriptor &event_handler::get_file_descriptor() {

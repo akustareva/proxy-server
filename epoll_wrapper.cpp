@@ -31,7 +31,7 @@ void epoll::run() {
         for (int i = 0; i < count; i++) {
             auto &ev = events[i];
             try {
-                data_info *x = static_cast<data_info *>(ev.data.ptr);
+                data_info* x = static_cast<data_info*>(ev.data.ptr);
                 if (open_data.find(x) != open_data.end()) {
                     x->callback(ev.events);
                 }
