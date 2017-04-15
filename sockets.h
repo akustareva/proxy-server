@@ -1,5 +1,5 @@
-#ifndef PROXY_POSIX_SOCKET_H
-#define PROXY_POSIX_SOCKET_H
+#ifndef PROXY_SOCKETS_H
+#define PROXY_SOCKETS_H
 
 #include <sys/types.h>
 #include <iostream>
@@ -40,4 +40,4 @@ public:
 };
 
 
-#endif //PROXY_POSIX_SOCKET_H
+#endif //PROXY_SOCKETS_H

@@ -1,5 +1,5 @@
-#ifndef PROXY_PROXY_H
-#define PROXY_PROXY_H
+#ifndef PROXY_SERVER_PROXY_SERVER_H
+#define PROXY_SERVER_PROXY_SERVER_H
 
 
 #include <vector>
@@ -87,4 +87,4 @@ private:
     std::string rest;
 };
 
-#endif //PROXY_PROXY_H
+#endif //PROXY_SERVER_PROXY_SERVER_H

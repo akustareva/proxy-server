@@ -1,5 +1,5 @@
-#ifndef PROXY_ADDRESS_H
-#define PROXY_ADDRESS_H
+#ifndef PROXY_IPV4_ENDPOINT_H
+#define PROXY_IPV4_ENDPOINT_H
 
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -28,4 +28,4 @@ public:
 
 std::ostream& operator<<(std::ostream& os, ipv4_endpoint const& endpoint);
 
-#endif //PROXY_ADDRESS_H
+#endif //PROXY_IPV4_ENDPOINT_H
